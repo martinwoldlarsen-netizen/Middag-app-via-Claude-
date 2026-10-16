@@ -4,7 +4,7 @@ Les denne før du gjør endringer i appen. Den samler prosjektdokumentet
 (`docs/middag-app-konsept.pdf`), alt eieren har sagt underveis, og eierens egne
 notater. «Du» betyr eieren av appen.
 
-Sist oppdatert: 8. oktober 2026 (etter etappe 1–6).
+Sist oppdatert: 16. oktober 2026 (innlogging og app på Hjem-skjermen).
 
 ## Kjerneidé
 
@@ -21,6 +21,16 @@ butikken uten å snu en eneste gang. Du trykker deg gjennom lista og er ferdig.
 
 ## Slik fungerer appen i dag
 
+- **Innlogging som i ukepenger:** appen starter med «Hei igjen 👋». Logg inn
+  med e-post og passord (Google-knappen dukker opp av seg selv når Google slås
+  på i Supabase), eller lag konto. Kontoen kobles til husstanden, så ukeplan,
+  liste, egne middager og eierskapet til butikkene følger deg til alle
+  telefoner – også appen på Hjem-skjermen, som på iPhone har eget lager.
+  «Glemt passord?» sender lenke. «Bruk uten konto» virker som før. Konto og
+  «Logg ut» ligger øverst under Mer.
+- **App på Hjem-skjermen:** veiledning (Del → «Legg til på Hjem-skjerm») på
+  innloggingen, forsiden (kan skjules) og under Mer. Appen åpner også uten nett
+  (service worker), så lista virker med dårlig dekning i butikken.
 - **Middager:** kort med bilde, tid, pris og pris per person. Søk, antall
   personer, sortering (Forslag, Raskest, Billigst, Mest protein, Lengst siden)
   og filter med dra-skalaer for tid og pris per person. + legger middagen i uka.
@@ -67,6 +77,7 @@ butikken uten å snu en eneste gang. Du trykker deg gjennom lista og er ferdig.
 - Etappe 4: kjøleskap, rester og sparemiddag
 - Etappe 5: næring per porsjon, ukesbalanse, kokemodus, Inspo-bibliotek
 - Etappe 6: «Forbedre uka» med AI-forslag (spar, protein, sunnere)
+- Innlogging og kontoer, app på Hjem-skjermen og bruk uten nett (16. oktober)
 
 ### Gjenstår
 
@@ -81,7 +92,11 @@ butikken uten å snu en eneste gang. Du trykker deg gjennom lista og er ferdig.
    merker dem «ca.» med dato. Ferskere priser krever en annen kilde.
 6. **Varsel på låst telefon** når samboer handler finnes ikke ennå (bare banner
    i appen). Krever push-varsler.
-7. **Innlogging og kontoer.** I dag brukes en skjult husstandsnøkkel.
+7. **E-post fra Supabase:** gratisplanen sender bare e-post (bekreftelse, nytt
+   passord) til eierens egne adresser, og lenkene går til Site URL i Supabase.
+   Eieren bør slå av «Confirm email» og legge til
+   `https://handleklar-omega.vercel.app/**` under Redirect URLs. Egen
+   e-posttjeneste (f.eks. Resend) trengs for at andre skal få e-post.
 8. **AI som anbefaler retter ut fra smak** og bytter enkeltvarer i lista (i dag
    bytter AI-en hele middager).
 
@@ -118,7 +133,14 @@ butikken uten å snu en eneste gang. Du trykker deg gjennom lista og er ferdig.
   samme adresse får kalle den, og det er en grense per IP. Uten
   `ANTHROPIC_API_KEY` svarer den `no_key`, og appen bruker `src/lib/forslag.ts`.
 - **Database:** Supabase-prosjektet «Mat app» (`ocryrmuvwthsceovybqx`), eget
-  skjema `handleklar` som ikke er eksponert. Appen bruker bare `hk_*`-funksjoner:
+  skjema `handleklar` som ikke er eksponert. Gratisplanen setter prosjektet på
+  pause etter en uke uten bruk (skjedde 16. oktober). `mobile/api/keepalive.ts`
+  kalles hver morgen av en Vercel cron (`vercel.json`) for å holde det våkent.
+  Appen bruker bare `hk_*`-funksjoner:
+  - kontoer (krever innlogging): `hk_account_login` (kobler kontoen til
+    husstanden og gir telefonen en egen nøkkel i `handleklar.household_keys`,
+    tar med eierskapet), `hk_account_info`, `hk_account_set_name`.
+    Tabellen `handleklar.accounts` kobler `auth.users` til husstand.
   - egne middager: `hk_create_household`, `hk_list_meals`, `hk_save_meal`,
     `hk_delete_meal` (husstandsnøkkel i appen, bare hashen lagres)
   - butikker: `hk_list_stores` (åpen), `hk_save_store` og `hk_hide_store`
@@ -128,6 +150,10 @@ butikken uten å snu en eneste gang. Du trykker deg gjennom lista og er ferdig.
 - **Rute-systemet:** `src/lib/stops.ts` plasserer hver vare på et av 18 stopp.
   En butikk er en rekkefølge av stoppene.
 - **Priser:** `src/lib/prices.ts` (hele pakker, kjede per butikk, «har hjemme»).
+- **Innlogging:** `src/lib/supabase.ts` (Supabase Auth, lagres på telefonen),
+  `src/lib/auth.tsx` (innlogging, kobling, logg ut), `src/components/AuthGate.tsx`,
+  `LoginScreen.tsx`, `AccountCard.tsx`, `InstallCard.tsx`. `public/sw.js` er
+  service workeren.
 - **Delt tilstand:** `src/lib/shopping.tsx` (ukeplan, liste, kjøleskap) synkes
   som små endringer via `hk_get_list`/`hk_patch_list` i `src/lib/sync.tsx`.
 - **Næring:** `src/lib/nutrition.ts` (grove anslag per råvare, ukesbalanse).

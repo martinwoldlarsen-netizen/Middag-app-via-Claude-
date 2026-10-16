@@ -99,10 +99,17 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   // Lokale endringer sendes videre så lenge telefonen er med i en husstand.
   useEffect(() => {
+    const previous = tokenRef.current;
     tokenRef.current = householdToken;
     if (!householdToken) {
       onLocalPatch.current = null;
       setStatus('off');
+      // Telefonen forlot husstanden (logget ut): ventende endringer hører til den.
+      if (previous) {
+        queue.current = [];
+        versionRef.current = 0;
+        AsyncStorage.removeItem(QUEUE_KEY).catch(() => {});
+      }
       return;
     }
     onLocalPatch.current = patch => {

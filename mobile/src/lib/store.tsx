@@ -24,6 +24,8 @@ type AppState = {
   resetStore: (storeId: string) => void;
   // Bare eieren kan endre butikkene. Rekkefølgen er felles for alle.
   isOwner: boolean;
+  // Eiernøkkelen på denne telefonen, så innloggingen kan knytte eierskapet til kontoen.
+  ownerKey: string | null;
   unlockOwner: (key: string) => Promise<boolean>;
   claimOwner: () => Promise<void>;
   lockOwner: () => void;
@@ -244,6 +246,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       removeStore,
       resetStore,
       isOwner: Boolean(ownerKey),
+      ownerKey,
       unlockOwner,
       claimOwner,
       lockOwner,

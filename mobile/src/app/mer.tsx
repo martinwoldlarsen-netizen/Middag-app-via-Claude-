@@ -2,6 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { AccountCard } from '@/components/AccountCard';
+import { InstallCard } from '@/components/InstallCard';
 import { Eyebrow, Page, Title } from '@/components/ui';
 import { colors, fonts, radius, spacing } from '@/constants/theme';
 import { useHistory } from '@/lib/history';
@@ -63,6 +65,8 @@ export default function MoreScreen() {
         <Title size="lg">Innstillinger og mer</Title>
       </View>
       <View style={styles.list}>
+        <AccountCard />
+        <InstallCard />
         {items.map(item => (
           <Pressable
             key={item.title}

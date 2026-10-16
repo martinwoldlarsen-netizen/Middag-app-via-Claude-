@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { InstallCard } from '@/components/InstallCard';
 import { Slider } from '@/components/Slider';
 import { Body, Button, Chip, Eyebrow, Meta, Page, PersonStepper, Title } from '@/components/ui';
 import { categoryTints, colors, defaultTint, fonts, radius, spacing } from '@/constants/theme';
@@ -110,6 +111,7 @@ export default function MealListScreen() {
 
   return (
     <Page background={inspo ? colors.bgCool : colors.bg}>
+      <InstallCard dismissible style={styles.install} />
       <View style={styles.library}>
         {(
           [
@@ -356,6 +358,9 @@ function MealCard({
 }
 
 const styles = StyleSheet.create({
+  install: {
+    marginBottom: spacing.lg,
+  },
   library: {
     flexDirection: 'row',
     alignSelf: 'flex-start',

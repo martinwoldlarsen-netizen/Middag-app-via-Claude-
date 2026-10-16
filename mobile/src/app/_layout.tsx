@@ -5,10 +5,13 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppShell } from '@/components/AppShell';
+import { AuthGate } from '@/components/AuthGate';
 import { colors } from '@/constants/theme';
+import { AuthProvider } from '@/lib/auth';
 import { MealsProvider } from '@/lib/meals-store';
 import { HistoryProvider } from '@/lib/history';
 import { ShoppingProvider } from '@/lib/shopping';
@@ -34,6 +37,12 @@ export default function RootLayout() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Service worker: appen åpner også uten nett, for eksempel i butikken.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }, []);
+
   if (!fontsLoaded && !fontError && !gaveUp) return null;
 
   return (
@@ -43,15 +52,19 @@ export default function RootLayout() {
           <ShoppingProvider>
             <SyncProvider>
               <HistoryProvider>
-                <StatusBar style="dark" />
-                <AppShell>
-                  <Stack
-                    screenOptions={{
-                      headerShown: false,
-                      contentStyle: { backgroundColor: colors.bg },
-                    }}
-                  />
-                </AppShell>
+                <AuthProvider>
+                  <StatusBar style="dark" />
+                  <AuthGate>
+                    <AppShell>
+                      <Stack
+                        screenOptions={{
+                          headerShown: false,
+                          contentStyle: { backgroundColor: colors.bg },
+                        }}
+                      />
+                    </AppShell>
+                  </AuthGate>
+                </AuthProvider>
               </HistoryProvider>
             </SyncProvider>
           </ShoppingProvider>
