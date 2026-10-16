@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { InstallCard } from '@/components/InstallCard';
 import { Slider } from '@/components/Slider';
@@ -21,6 +22,15 @@ import { useApp } from '@/lib/store';
 
 type SortKey = 'forslag' | 'raskest' | 'billigst' | 'protein' | 'lengst';
 type Library = 'mine' | 'inspo';
+// Rutenett og liste viser mange middager på skjermen, store bilder er for å se.
+type CardView = 'rutenett' | 'liste' | 'store';
+
+const VIEW_KEY = 'handleklar.mealView';
+const VIEWS: { key: CardView; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
+  { key: 'rutenett', icon: 'grid-outline', label: 'Vis som rutenett' },
+  { key: 'liste', icon: 'list-outline', label: 'Vis som liste' },
+  { key: 'store', icon: 'image-outline', label: 'Vis store bilder' },
+];
 
 const SORTS: { key: SortKey; label: string }[] = [
   { key: 'forslag', label: 'Forslag' },
@@ -44,7 +54,19 @@ export default function MealListScreen() {
   const allMeals = inspo ? INSPO : myMeals;
   // Inspo-retter du har lagret som dine egne, merkes «I mine».
   const saved = useMemo(() => new Set(myMeals.map(meal => meal.basedOn).filter(id => id !== undefined)), [myMeals]);
-  const { contentWidth, columns, wide } = useLayout();
+  const { contentWidth, columns, wide, width } = useLayout();
+  const [view, setViewState] = useState<CardView>('rutenett');
+  useEffect(() => {
+    AsyncStorage.getItem(VIEW_KEY)
+      .then(saved => {
+        if (saved === 'rutenett' || saved === 'liste' || saved === 'store') setViewState(saved);
+      })
+      .catch(() => {});
+  }, []);
+  const setView = (next: CardView) => {
+    setViewState(next);
+    AsyncStorage.setItem(VIEW_KEY, next).catch(() => {});
+  };
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('forslag');
   const [filterOpen, setFilterOpen] = useState(false);
@@ -106,38 +128,62 @@ export default function MealListScreen() {
   const saver = saveMeals(myMeals, Object.values(state.fridge)).find(item => item.soonest !== null && item.soonest <= 3);
   const saverItem = saver?.uses.reduce((a, b) => ((a.expires ?? '9') <= (b.expires ?? '9') ? a : b));
 
-  const gap = wide ? spacing.xl : spacing.lg;
-  const cardWidth = Math.floor((contentWidth - gap * (columns - 1)) / columns);
+  // Rutenett: to i bredden på telefon og flere på større skjermer. Liste: én
+  // kolonne på telefon, to på PC. Store bilder: som før.
+  const viewColumns = view === 'rutenett' ? columns + 1 : view === 'liste' ? (width >= 900 ? 2 : 1) : columns;
+  const gap = view === 'store' ? (wide ? spacing.xl : spacing.lg) : view === 'liste' ? spacing.xl : wide ? spacing.lg : spacing.md;
+  const cardWidth = Math.floor((contentWidth - gap * (viewColumns - 1)) / viewColumns);
+  // Lista er tette rader med strek mellom, uten luft over og under.
+  const gridGap = view === 'liste' ? { columnGap: gap, rowGap: 0 } : { gap };
 
   return (
     <Page background={inspo ? colors.bgCool : colors.bg}>
       <InstallCard dismissible style={styles.install} />
-      <View style={styles.library}>
-        {(
-          [
-            { key: 'mine', label: 'Mine middager' },
-            { key: 'inspo', label: 'Inspo' },
-          ] as const
-        ).map(option => (
-          <Pressable
-            key={option.key}
-            accessibilityRole="button"
-            aria-selected={library === option.key}
-            onPress={() => setLibrary(option.key)}
-            style={[styles.libraryOption, library === option.key && styles.libraryOptionOn]}>
-            <Text style={[styles.libraryText, library === option.key && styles.libraryTextOn]}>{option.label}</Text>
-          </Pressable>
-        ))}
+      <View style={styles.topRow}>
+        <View style={styles.library}>
+          {(
+            [
+              { key: 'mine', label: 'Mine middager' },
+              { key: 'inspo', label: 'Inspo' },
+            ] as const
+          ).map(option => (
+            <Pressable
+              key={option.key}
+              accessibilityRole="button"
+              aria-selected={library === option.key}
+              onPress={() => setLibrary(option.key)}
+              style={[styles.libraryOption, library === option.key && styles.libraryOptionOn]}>
+              <Text style={[styles.libraryText, library === option.key && styles.libraryTextOn]}>{option.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <View style={styles.views}>
+          {VIEWS.map(option => (
+            <Pressable
+              key={option.key}
+              accessibilityRole="button"
+              accessibilityLabel={option.label}
+              aria-selected={view === option.key}
+              onPress={() => setView(option.key)}
+              hitSlop={4}
+              style={[styles.viewOption, view === option.key && styles.viewOptionOn]}>
+              <Ionicons name={option.icon} size={18} color={view === option.key ? colors.bg : colors.ink} />
+            </Pressable>
+          ))}
+        </View>
       </View>
-      <View style={[styles.hero, wide && styles.heroWide]}>
+      <View style={[styles.hero, wide ? styles.heroWide : styles.heroNarrow]}>
         <View style={styles.heroText}>
-          <Eyebrow>{inspo ? `Inspo · ${INSPO.length} nye retter` : 'Deres faste middager'}</Eyebrow>
-          <Title size="xl">{inspo ? 'Noe nytt å prøve?' : 'Hva blir det til middag?'}</Title>
-          <Body style={styles.heroBody}>
-            {inspo
-              ? 'Norske hverdagsmiddager og Oda-retter. Trykk + for å prøve én i uka, eller åpne den og legg den til i dine middager.'
-              : 'Trykk + for å legge middager i uka, eller velg én og handle med en gang. Lista følger alltid butikkens rute.'}
-          </Body>
+          {/* På telefon holder vi toppen kort, så middagene synes med en gang. */}
+          {wide && <Eyebrow>{inspo ? `Inspo · ${INSPO.length} nye retter` : 'Deres faste middager'}</Eyebrow>}
+          <Title size={wide ? 'xl' : 'lg'}>{inspo ? 'Noe nytt å prøve?' : 'Hva blir det til middag?'}</Title>
+          {wide && (
+            <Body style={styles.heroBody}>
+              {inspo
+                ? 'Norske hverdagsmiddager og Oda-retter. Trykk + for å prøve én i uka, eller åpne den og legg den til i dine middager.'
+                : 'Trykk + for å legge middager i uka, eller velg én og handle med en gang. Lista følger alltid butikkens rute.'}
+            </Body>
+          )}
         </View>
         <View style={[styles.controls, wide && styles.controlsWide]}>
           <View style={styles.search}>
@@ -159,15 +205,24 @@ export default function MealListScreen() {
           </View>
           <View style={styles.controlRow}>
             <PersonStepper value={persons} onChange={setPersons} />
-            <Button label="Ny middag" icon="add" variant="lime" onPress={() => router.push('/ny-middag')} />
+            <Button
+              label="Ny middag"
+              icon="add"
+              variant="lime"
+              onPress={() => router.push('/ny-middag')}
+              style={!wide && styles.newButtonNarrow}
+            />
           </View>
         </View>
       </View>
 
-      <View style={styles.sortRow}>
-        {SORTS.map(option => (
-          <Chip key={option.key} label={option.label} selected={sort === option.key} onPress={() => setSort(option.key)} />
-        ))}
+      {/* På telefon ligger sorteringen på én linje som kan sveipes sidelengs. */}
+      <ScrollView
+        horizontal={!wide}
+        scrollEnabled={!wide}
+        showsHorizontalScrollIndicator={false}
+        style={[styles.sortScroll, !wide && styles.sortScrollNarrow]}
+        contentContainerStyle={[styles.sortRow, !wide && styles.sortRowNarrow]}>
         <Pressable
           accessibilityRole="button"
           aria-expanded={filterOpen}
@@ -176,7 +231,10 @@ export default function MealListScreen() {
           <Ionicons name="options-outline" size={16} color={colors.ink} />
           <Text style={styles.filterButtonText}>Filter{activeFilters ? ` (${activeFilters})` : ''}</Text>
         </Pressable>
-      </View>
+        {SORTS.map(option => (
+          <Chip key={option.key} label={option.label} selected={sort === option.key} onPress={() => setSort(option.key)} />
+        ))}
+      </ScrollView>
 
       {!inspo && saver && saverItem && (
         <Pressable
@@ -238,10 +296,11 @@ export default function MealListScreen() {
           <Body>{query ? 'Prøv et annet ord, eller tøm søket for å se alle middagene.' : 'Dra skalaene litt opp, eller nullstill filteret.'}</Body>
         </View>
       ) : (
-        <View style={[styles.grid, { gap }]}>
+        <View style={[styles.grid, gridGap]}>
           {meals.map(({ meal, best, perPerson, protein, eatenAt }) => (
             <MealCard
               key={meal.id}
+              view={view}
               meal={meal}
               width={cardWidth}
               best={best}
@@ -264,18 +323,8 @@ export default function MealListScreen() {
   );
 }
 
-function MealCard({
-  meal,
-  width,
-  best,
-  perPerson,
-  protein,
-  saved,
-  eatenAt,
-  inWeek,
-  onToggleWeek,
-  onPress,
-}: {
+type CardProps = {
+  view: CardView;
   meal: Meal;
   width: number;
   best: StorePrice | undefined;
@@ -286,17 +335,18 @@ function MealCard({
   inWeek: boolean;
   onToggleWeek: () => void;
   onPress: () => void;
-}) {
+};
+
+function MealCard(props: CardProps) {
+  const { view, meal, width, onPress } = props;
+  if (view === 'liste') return <MealRow {...props} />;
+  const compact = view === 'rutenett';
   const tint = categoryTints[meal.category] ?? defaultTint;
   return (
-    <Pressable
-      accessibilityRole="link"
-      accessibilityLabel={meal.name}
-      onPress={onPress}
-      style={{ width }}>
+    <Pressable accessibilityRole="link" accessibilityLabel={meal.name} onPress={onPress} style={{ width }}>
       {({ hovered, pressed }: { pressed: boolean; hovered?: boolean }) => (
         <View style={pressed && { opacity: 0.85 }}>
-          <View style={[styles.cardImage, { backgroundColor: tint }]}>
+          <View style={[styles.cardImage, compact && styles.cardImageCompact, { backgroundColor: tint }]}>
             <Image
               source={{ uri: photoFor(meal) }}
               style={[StyleSheet.absoluteFill, hovered && styles.cardImageHover]}
@@ -304,55 +354,134 @@ function MealCard({
               transition={200}
               accessibilityLabel={meal.name}
             />
-            <View style={styles.tags}>
-              {inWeek && (
-                <View style={styles.onListTag}>
-                  <Ionicons name="calendar" size={13} color={colors.ink} />
-                  <Text style={styles.onListText}>I uka</Text>
-                </View>
-              )}
-              {meal.custom && (
-                <View style={[styles.onListTag, styles.customTag]}>
-                  <Ionicons name="person" size={12} color={colors.ink} />
-                  <Text style={styles.onListText}>Egen</Text>
-                </View>
-              )}
-              {saved && (
-                <View style={[styles.onListTag, styles.customTag]}>
-                  <Ionicons name="bookmark" size={12} color={colors.ink} />
-                  <Text style={styles.onListText}>I mine</Text>
-                </View>
-              )}
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={inWeek ? `Fjern ${meal.name} fra uka` : `Legg ${meal.name} i uka`}
-              onPress={onToggleWeek}
-              hitSlop={6}
-              style={[styles.weekButton, inWeek && styles.weekButtonOn]}>
-              <Ionicons name={inWeek ? 'checkmark' : 'add'} size={24} color={inWeek ? colors.limeStrong : colors.ink} />
-            </Pressable>
+            <Tags {...props} compact={compact} />
+            <WeekButton {...props} compact={compact} />
           </View>
-          <View style={styles.cardBody}>
-            <View style={styles.metaRow}>
-              {meal.timeMinutes > 0 && <Meta icon="time-outline">{meal.timeMinutes} min</Meta>}
-              {best && (
-                <Meta icon="wallet-outline">
-                  {formatPrice(best.price)} · {perPerson} kr/pers
-                </Meta>
-              )}
-              {protein !== null && <Meta icon="barbell-outline">{protein} g protein</Meta>}
-              {eatenAt && <Meta icon="checkmark-done-outline">Handlet {daysAgo(eatenAt)}</Meta>}
-            </View>
-            <Text style={[styles.cardTitle, hovered && styles.cardTitleHover]}>{meal.name}</Text>
-            {meal.description ? (
-              <Body style={styles.cardDescription} numberOfLines={2}>
-                {meal.description}
-              </Body>
-            ) : null}
+          <View style={[styles.cardBody, compact && styles.cardBodyCompact]}>
+            {compact ? (
+              <>
+                <Text style={[styles.cardTitleCompact, hovered && styles.cardTitleHover]} numberOfLines={2}>
+                  {meal.name}
+                </Text>
+                <MetaLine {...props} short />
+              </>
+            ) : (
+              <>
+                <MetaLine {...props} />
+                <Text style={[styles.cardTitle, hovered && styles.cardTitleHover]}>{meal.name}</Text>
+                {meal.description ? (
+                  <Body style={styles.cardDescription} numberOfLines={2}>
+                    {meal.description}
+                  </Body>
+                ) : null}
+              </>
+            )}
           </View>
         </View>
       )}
+    </Pressable>
+  );
+}
+
+// Liste: lite bilde, navn og pris på én rad. Raskest å bla gjennom.
+function MealRow(props: CardProps) {
+  const { meal, width, onPress } = props;
+  const tint = categoryTints[meal.category] ?? defaultTint;
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={meal.name}
+      onPress={onPress}
+      style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+        styles.row,
+        { width },
+        (pressed || hovered) && styles.rowActive,
+      ]}>
+      <View style={[styles.rowImage, { backgroundColor: tint }]}>
+        <Image source={{ uri: photoFor(meal) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} accessibilityLabel={meal.name} />
+      </View>
+      <View style={styles.rowText}>
+        <Text style={styles.rowTitle} numberOfLines={2}>
+          {meal.name}
+        </Text>
+        <MetaLine {...props} short />
+        <Tags {...props} compact inline />
+      </View>
+      <WeekButton {...props} compact inline />
+    </Pressable>
+  );
+}
+
+function MetaLine({ meal, best, perPerson, protein, eatenAt, short }: CardProps & { short?: boolean }) {
+  if (short) {
+    // Kort: tid og pris på én linje uten ikoner, så det får plass to i bredden.
+    const parts = [
+      meal.timeMinutes > 0 ? `${meal.timeMinutes} min` : null,
+      best ? `${perPerson} kr/pers` : null,
+      protein !== null ? `${protein} g protein` : null,
+      eatenAt ? `Handlet ${daysAgo(eatenAt)}` : null,
+    ].filter((part): part is string => Boolean(part));
+    return (
+      <View style={styles.metaShort}>
+        {parts.map((part, index) => (
+          <View key={part} style={styles.metaShortPart}>
+            {index > 0 && <Text style={[styles.metaShortText, styles.metaDot]}>·</Text>}
+            <Text style={styles.metaShortText}>{part}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  }
+  return (
+    <View style={[styles.metaRow, short && styles.metaRowShort]}>
+      {meal.timeMinutes > 0 && <Meta icon="time-outline">{meal.timeMinutes} min</Meta>}
+      {best && <Meta icon="wallet-outline">{short ? `${perPerson} kr/pers` : `${formatPrice(best.price)} · ${perPerson} kr/pers`}</Meta>}
+      {protein !== null && <Meta icon="barbell-outline">{protein} g protein</Meta>}
+      {eatenAt && <Meta icon="checkmark-done-outline">Handlet {daysAgo(eatenAt)}</Meta>}
+    </View>
+  );
+}
+
+function Tags({ meal, inWeek, saved, compact, inline }: CardProps & { compact?: boolean; inline?: boolean }) {
+  if (!inWeek && !meal.custom && !saved) return null;
+  return (
+    <View style={inline ? styles.tagsInline : [styles.tags, compact && styles.tagsCompact]}>
+      {inWeek && (
+        <View style={[styles.onListTag, compact && styles.tagCompact]}>
+          <Ionicons name="calendar" size={compact ? 11 : 13} color={colors.ink} />
+          <Text style={[styles.onListText, compact && styles.tagTextCompact]}>I uka</Text>
+        </View>
+      )}
+      {meal.custom && (
+        <View style={[styles.onListTag, styles.customTag, compact && styles.tagCompact]}>
+          <Ionicons name="person" size={compact ? 10 : 12} color={colors.ink} />
+          <Text style={[styles.onListText, compact && styles.tagTextCompact]}>Egen</Text>
+        </View>
+      )}
+      {saved && (
+        <View style={[styles.onListTag, styles.customTag, compact && styles.tagCompact]}>
+          <Ionicons name="bookmark" size={compact ? 10 : 12} color={colors.ink} />
+          <Text style={[styles.onListText, compact && styles.tagTextCompact]}>I mine</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
+function WeekButton({ meal, inWeek, onToggleWeek, compact, inline }: CardProps & { compact?: boolean; inline?: boolean }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={inWeek ? `Fjern ${meal.name} fra uka` : `Legg ${meal.name} i uka`}
+      onPress={onToggleWeek}
+      hitSlop={compact ? 10 : 6}
+      style={[
+        styles.weekButton,
+        compact && styles.weekButtonCompact,
+        inline && styles.weekButtonInline,
+        inWeek && styles.weekButtonOn,
+      ]}>
+      <Ionicons name={inWeek ? 'checkmark' : 'add'} size={compact ? 20 : 24} color={inWeek ? colors.limeStrong : colors.ink} />
     </Pressable>
   );
 }
@@ -361,13 +490,36 @@ const styles = StyleSheet.create({
   install: {
     marginBottom: spacing.lg,
   },
+  topRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+  },
   library: {
     flexDirection: 'row',
     alignSelf: 'flex-start',
     backgroundColor: colors.beige,
     borderRadius: radius.round,
     padding: 4,
-    marginBottom: spacing.xl,
+  },
+  views: {
+    flexDirection: 'row',
+    backgroundColor: colors.beige,
+    borderRadius: radius.round,
+    padding: 4,
+  },
+  viewOption: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.round,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  viewOptionOn: {
+    backgroundColor: colors.ink,
   },
   libraryOption: {
     paddingHorizontal: spacing.lg,
@@ -389,6 +541,10 @@ const styles = StyleSheet.create({
   hero: {
     gap: spacing.xl,
     marginBottom: spacing.xxl,
+  },
+  heroNarrow: {
+    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
   heroWide: {
     flexDirection: 'row',
@@ -435,13 +591,27 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     outlineStyle: 'none',
   } as object,
+  newButtonNarrow: {
+    minHeight: 48,
+    paddingHorizontal: spacing.md,
+  },
+  sortScroll: {
+    marginTop: -spacing.lg,
+    marginBottom: spacing.xl,
+    flexGrow: 0,
+  },
+  sortScrollNarrow: {
+    marginTop: 0,
+    marginBottom: spacing.lg,
+  },
   sortRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: -spacing.lg,
-    marginBottom: spacing.xl,
+  },
+  sortRowNarrow: {
+    flexWrap: 'nowrap',
   },
   saver: {
     flexDirection: 'row',
@@ -518,6 +688,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     overflow: 'hidden',
   },
+  cardImageCompact: {
+    aspectRatio: 4 / 3,
+    borderRadius: radius.md,
+  },
   cardImageHover: {
     transform: [{ scale: 1.03 }],
   },
@@ -539,8 +713,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  weekButtonCompact: {
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 36,
+    height: 36,
+  },
+  weekButtonInline: {
+    position: 'relative',
+    top: 0,
+    right: 0,
+    width: 38,
+    height: 38,
+  },
   weekButtonOn: {
     backgroundColor: colors.ink,
+  },
+  tagsCompact: {
+    top: spacing.sm,
+    left: spacing.sm,
+    right: 52,
+    flexWrap: 'wrap',
+  },
+  tagsInline: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: 2,
+  },
+  tagCompact: {
+    gap: 4,
+    paddingVertical: 3,
+    paddingHorizontal: 6,
+  },
+  tagTextCompact: {
+    fontSize: 11,
   },
   customTag: {
     backgroundColor: colors.lavender,
@@ -568,6 +775,66 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.lg,
+  },
+  cardBodyCompact: {
+    paddingTop: spacing.sm,
+    paddingBottom: 0,
+    gap: 4,
+  },
+  cardTitleCompact: {
+    fontFamily: fonts.display,
+    fontSize: 20,
+    lineHeight: 22,
+    color: colors.ink,
+  },
+  metaRowShort: {
+    columnGap: spacing.md,
+    rowGap: 2,
+  },
+  metaShort: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: 6,
+  },
+  metaShortText: {
+    fontFamily: fonts.mono,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.inkSoft,
+  },
+  metaShortPart: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  metaDot: {
+    color: colors.muted,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.line,
+  },
+  rowActive: {
+    opacity: 0.8,
+  },
+  rowImage: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+  },
+  rowText: {
+    flex: 1,
+    gap: 2,
+  },
+  rowTitle: {
+    fontFamily: fonts.display,
+    fontSize: 20,
+    lineHeight: 22,
+    color: colors.ink,
   },
   cardTitle: {
     fontFamily: fonts.display,

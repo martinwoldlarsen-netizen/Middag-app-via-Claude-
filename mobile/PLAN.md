@@ -31,9 +31,13 @@ butikken uten å snu en eneste gang. Du trykker deg gjennom lista og er ferdig.
 - **App på Hjem-skjermen:** veiledning (Del → «Legg til på Hjem-skjerm») på
   innloggingen, forsiden (kan skjules) og under Mer. Appen åpner også uten nett
   (service worker), så lista virker med dårlig dekning i butikken.
-- **Middager:** kort med bilde, tid, pris og pris per person. Søk, antall
-  personer, sortering (Forslag, Raskest, Billigst, Mest protein, Lengst siden)
-  og filter med dra-skalaer for tid og pris per person. + legger middagen i uka.
+- **Middager:** tre visninger øverst til høyre: rutenett (standard, to i
+  bredden på telefon, 6–8 middager per skjerm), liste (små bilder, raskest å
+  bla i) og store bilder. Valget huskes. På telefon er toppen kort og
+  sorteringen ligger på én linje som sveipes sidelengs, så middagene synes med
+  en gang. Søk, antall personer, sortering (Forslag, Raskest, Billigst, Mest
+  protein, Lengst siden) og filter med dra-skalaer for tid og pris per person.
+  + legger middagen i uka.
 - **Mine middager / Inspo:** bryteren øverst bytter mellom husstandens middager
   og 36 Inspo-retter (norske hverdagsmiddager og Oda-retter). Inspo har litt
   kjøligere bakgrunn. En Inspo-rett kan legges rett i uka eller lagres som egen.
