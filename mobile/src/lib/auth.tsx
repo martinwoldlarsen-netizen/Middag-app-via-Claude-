@@ -76,6 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [linkedUser, setLinkedUser] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
   const linking = useRef(false);
+  // Sjekkes én gang hver gang appen åpnes, så alle telefonene havner i samme
+  // husstand selv om kontoen ble koblet til en annen husstand et annet sted.
+  const verifiedFor = useRef<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -108,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Etter innlogging: koble kontoen til husstanden (eller hent husstanden til
   // en ny telefon), og ta med eierskapet hvis kontoen er eier.
   const link = useCallback(
-    async (userId: string) => {
+    async (userId: string, firstTime = true) => {
       if (linking.current) return;
       linking.current = true;
       try {
@@ -126,11 +129,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           [LINKED_KEY, userId],
           [GUEST_KEY, '0'],
         ]);
+        verifiedFor.current = userId;
         setLinkedUser(userId);
         setGuest(false);
         setLinkError(null);
       } catch (error) {
-        setLinkError(error instanceof Error ? authErrorText(error.message) : 'Kunne ikke koble kontoen');
+        // Uten nett når appen åpnes er helt greit: telefonen er allerede koblet.
+        if (firstTime) setLinkError(error instanceof Error ? authErrorText(error.message) : 'Kunne ikke koble kontoen');
       } finally {
         linking.current = false;
       }
@@ -141,8 +146,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const userId = session?.user.id ?? null;
   useEffect(() => {
     if (!userId || mealsLoading || !appReady) return;
-    // Kobles når kontoen er ny på telefonen, eller telefonen har mistet nøkkelen.
-    if (linkedUser !== userId || !householdToken) link(userId);
+    // Kobles når kontoen er ny på telefonen, telefonen har mistet nøkkelen,
+    // eller appen nettopp er åpnet.
+    const firstTime = linkedUser !== userId || !householdToken;
+    if (firstTime || verifiedFor.current !== userId) link(userId, firstTime);
   }, [userId, mealsLoading, appReady, linkedUser, householdToken, link]);
 
   // Ble telefonen eier mens du er innlogget (via /eier), knyttes eierskapet til kontoen.
@@ -225,6 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     lockOwner();
     replaceState(EMPTY_STATE);
     await AsyncStorage.multiRemove([LINKED_KEY, GUEST_KEY]).catch(() => {});
+    verifiedFor.current = null;
     setLinkedUser(null);
     setGuest(false);
     setRecovery(false);
