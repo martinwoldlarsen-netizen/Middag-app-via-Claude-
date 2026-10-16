@@ -88,6 +88,10 @@ butikken uten å snu en eneste gang. Du trykker deg gjennom lista og er ferdig.
 3. **Resten av de ~20 faste middagene.** Mangler bl.a. Madelén pasta og
    linseretten fra Ida Gran.
 4. **Gå gjennom butikkene i Spydeberg** og rette rekkefølgen. Eierens jobb.
+   Ingen hadde tatt eierskapet (vinduet stengte 9. oktober), så det ble åpnet
+   igjen 16. oktober til 18. oktober kl. 17.46. Eieren logger inn og trykker
+   «Gjør denne telefonen til eier» under Mer → Eier. Eierskapet følger da
+   kontoen til alle telefonene.
 5. **Kiwi-, Rema- og Coop-prisene i Kassalapp er gamle** (2022–2023). Appen
    merker dem «ca.» med dato. Ferskere priser krever en annen kilde.
 6. **Varsel på låst telefon** når samboer handler finnes ikke ennå (bare banner
