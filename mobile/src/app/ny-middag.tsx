@@ -12,6 +12,7 @@ import { useMeals } from '@/lib/meals-store';
 import { Counter } from '@/components/AddItemSheet';
 import { cheapestText, hitMeta, hitToProduct, useProductSearch, type SearchHit } from '@/lib/search';
 import { formatPrice, isPantry, pricesByStore, usePrices, type ChainPrices } from '@/lib/prices';
+import { useShopping } from '@/lib/shopping';
 import { useApp } from '@/lib/store';
 
 const CATEGORIES = ['Kjøtt', 'Kylling', 'Fisk', 'Pasta', 'Meksikansk', 'Pizza', 'Suppe', 'Vegetar', 'Enkelt'];
@@ -26,6 +27,7 @@ export default function NewMealScreen() {
   const params = useLocalSearchParams<{ id?: string; fra?: string }>();
   const { persons, stores } = useApp();
   const { findMeal, saveMeal, loading } = useMeals();
+  const { addMeal } = useShopping();
 
   const editing = params.id ? findMeal(params.id) : undefined;
   const template = editing ?? (params.fra ? findMeal(params.fra) : undefined);
@@ -127,7 +129,9 @@ export default function NewMealScreen() {
     searchRef.current?.focus();
   }
 
-  async function save() {
+  // «Lagre og legg i handlelista»: når du lager middagen fordi du skal lage den
+  // nå, havner den rett i uka og varene i handlelista.
+  async function save(shopNow = false) {
     if (!name.trim()) {
       setError('Gi middagen et navn.');
       return;
@@ -156,7 +160,12 @@ export default function NewMealScreen() {
         basePersons,
         basedOn: editing?.custom ? editing.basedOn : typeof template?.id === 'number' ? template.id : undefined,
       });
-      router.replace(`/rett/${saved.id}`);
+      if (shopNow) {
+        addMeal(saved.id, basePersons);
+        router.replace('/handleliste');
+      } else {
+        router.replace(`/rett/${saved.id}`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Kunne ikke lagre');
       setSaving(false);
@@ -360,7 +369,21 @@ export default function NewMealScreen() {
 
       {error && <Text style={styles.error}>{error}</Text>}
       <View style={styles.actions}>
-        <Button label={saving ? 'Lagrer …' : 'Lagre middag'} icon="checkmark" onPress={save} disabled={saving} />
+        {!editing?.custom && (
+          <Button
+            label={saving ? 'Lagrer …' : 'Lagre og legg i handlelista'}
+            icon="basket-outline"
+            onPress={() => save(true)}
+            disabled={saving}
+          />
+        )}
+        <Button
+          label={editing?.custom ? (saving ? 'Lagrer …' : 'Lagre endringer') : 'Bare lagre'}
+          icon="checkmark"
+          variant={editing?.custom ? 'primary' : 'outline'}
+          onPress={() => save(false)}
+          disabled={saving}
+        />
         <Button label="Avbryt" variant="outline" onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} />
       </View>
     </Page>

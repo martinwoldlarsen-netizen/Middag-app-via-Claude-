@@ -28,7 +28,19 @@ const CHAIN_NAMES: Record<string, string> = {
   COOP_OBS: 'Obs',
   JOKER_NO: 'Joker',
   BUNNPRIS: 'Bunnpris',
+  ODA_NO: 'Oda',
+  ENGROSSNETT_NO: 'Engrossnett',
 };
+
+// Butikkene i Spydeberg. Prisen derfra vises først, siden det er der det handles.
+const HOME_CHAINS = ['KIWI', 'REMA_1000', 'COOP_EXTRA', 'COOP_NO'];
+
+function chainName(chain: string): string {
+  if (CHAIN_NAMES[chain]) return CHAIN_NAMES[chain];
+  // Ukjente koder som «NAERBUTIKKEN_NO» blir «Naerbutikken».
+  const word = chain.replace(/_NO$/, '').replace(/_/g, ' ').toLowerCase();
+  return word.charAt(0).toUpperCase() + word.slice(1);
+}
 
 export function sizeText(weight: number | null | undefined, unit: string | null | undefined): string | null {
   if (!weight || !unit) return null;
@@ -38,8 +50,9 @@ export function sizeText(weight: number | null | undefined, unit: string | null 
 export function cheapestText(prices: ChainPrices | undefined): string | null {
   const entries = Object.entries(prices ?? {}).sort((a, b) => a[1] - b[1]);
   if (!entries.length) return null;
-  const [chain, price] = entries[0];
-  return `${formatKroner(price)} hos ${CHAIN_NAMES[chain] ?? chain}`;
+  const home = entries.filter(([chain]) => HOME_CHAINS.includes(chain));
+  const [chain, price] = home[0] ?? entries[0];
+  return `${formatKroner(price)} hos ${chainName(chain)}`;
 }
 
 export function hitToProduct(hit: SearchHit): Product {
@@ -51,15 +64,28 @@ export function hitMeta(hit: SearchHit): string {
 }
 
 // Søker hos Kassalapp mens du skriver, med en liten pause så vi ikke spør for hvert tastetrykk.
+// Tidligere søk huskes mens appen er åpen, så du får treffene med en gang
+// hvis du sletter tilbake til et ord du har søkt på.
+const searchCache = new Map<string, SearchHit[]>();
+
 export function useProductSearch(query: string, delay = 350): { hits: SearchHit[]; state: SearchState } {
-  const [hits, setHits] = useState<SearchHit[]>([]);
+  const key = query.trim().toLowerCase();
+  // Treffene hører til ett bestemt søk. Gamle treff vises ikke mens nye hentes,
+  // så du ikke trykker på en vare fra forrige søk.
+  const [result, setResult] = useState<{ key: string; hits: SearchHit[] }>({ key: '', hits: [] });
   const [state, setState] = useState<SearchState>('idle');
 
   useEffect(() => {
     const needle = query.trim();
     if (needle.length < 2) {
-      setHits([]);
+      setResult({ key: '', hits: [] });
       setState('idle');
+      return;
+    }
+    const cached = searchCache.get(needle.toLowerCase());
+    if (cached) {
+      setResult({ key: needle.toLowerCase(), hits: cached });
+      setState('done');
       return;
     }
     setState('loading');
@@ -71,15 +97,16 @@ export function useProductSearch(query: string, delay = 350): { hits: SearchHit[
         });
         const body = (await response.json()) as { products?: SearchHit[]; unavailable?: string };
         if (body.unavailable === 'no_key') {
-          setHits([]);
+          setResult({ key: needle.toLowerCase(), hits: [] });
           setState('no_key');
         } else if (!response.ok || body.unavailable) {
-          setHits([]);
+          setResult({ key: needle.toLowerCase(), hits: [] });
           setState('error');
         } else {
           const products = body.products ?? [];
           products.forEach(hit => rememberPrices(hit.ean, hit.prices));
-          setHits(products);
+          searchCache.set(needle.toLowerCase(), products);
+          setResult({ key: needle.toLowerCase(), hits: products });
           setState('done');
         }
       } catch (error) {
@@ -92,5 +119,5 @@ export function useProductSearch(query: string, delay = 350): { hits: SearchHit[
     };
   }, [query, delay]);
 
-  return { hits, state };
+  return { hits: result.key === key ? result.hits : [], state };
 }
