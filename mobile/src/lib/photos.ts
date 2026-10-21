@@ -45,6 +45,7 @@ const CATEGORY_PHOTOS: Record<string, string> = {
 const DEFAULT_PHOTO = unsplash('photo-1504674900247-0877df9cc836');
 
 export function photoFor(meal: Meal): string {
+  if (meal.image) return meal.image;
   const name = meal.name.toLowerCase();
   for (const [pattern, id] of NAME_PHOTOS) {
     if (pattern.test(name)) return unsplash(id);

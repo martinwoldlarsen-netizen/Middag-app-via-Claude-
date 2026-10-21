@@ -1,9 +1,9 @@
-import type { Meal } from '@/data/meals';
+import { STARTER_MEALS, type Meal } from '@/data/meals';
 
 // Inspo: et ferdig bibliotek med norske hverdagsmiddager og Oda-oppskrifter, hentet
 // fra den gamle nettsiden. Mengdene gjelder for fire personer. Id-ene starter på 1000
 // så de aldri kolliderer med de faste middagene.
-export const INSPO: Meal[] = [
+const LIBRARY: Meal[] = [
   {
     "id": 1003,
     "name": "Laksepasta",
@@ -2295,3 +2295,6 @@ export const INSPO: Meal[] = [
     ]
   }
 ];
+
+// Rettene som fulgte med appen (taco, lasagne …) ligger først i Inspo.
+export const INSPO: Meal[] = [...STARTER_MEALS, ...LIBRARY];

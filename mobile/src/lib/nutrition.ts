@@ -29,6 +29,8 @@ const FOODS: [RegExp, Food][] = [
   [/skinke/, { protein: 18, carbs: 1, redMeat: true, processedMeat: true }],
   [/kjøttboll|kjøttkake|karbonade/, { protein: 16, carbs: 5, gi: 50, redMeat: true }],
   [/kjøttdeig|karbonadedeig|svin|biff|entrecôte|entrecote|indrefilet|ytrefilet|lam\b|lammekjøtt|storfe/, { protein: 20, carbs: 0, redMeat: true }],
+  // Ferdig grillet: spiselig kjøtt uten bein, mer protein per 100 g.
+  [/grillet kylling|ferdiggrillet|salatkylling/, { protein: 27, carbs: 0, unitGrams: { stk: 600 } }],
   [/kylling|kalkun/, { protein: 21, carbs: 0, unitGrams: { stk: 1300 } }],
   [/^egg$|\begg\b/, { protein: 12.5, carbs: 1, unitGrams: { stk: 60 } }],
   [/parmesan|grana/, { protein: 35, carbs: 0 }],

@@ -4,7 +4,7 @@ Les denne før du gjør endringer i appen. Den samler prosjektdokumentet
 (`docs/middag-app-konsept.pdf`), alt eieren har sagt underveis, og eierens egne
 notater. «Du» betyr eieren av appen.
 
-Sist oppdatert: 16. oktober 2026 (innlogging og app på Hjem-skjermen).
+Sist oppdatert: 21. oktober 2026 (Mine middager = bare eierens egne retter).
 
 ## Kjerneidé
 
@@ -39,8 +39,19 @@ butikken uten å snu en eneste gang. Du trykker deg gjennom lista og er ferdig.
   protein, Lengst siden) og filter med dra-skalaer for tid og pris per person.
   + legger middagen i uka.
 - **Mine middager / Inspo:** bryteren øverst bytter mellom husstandens middager
-  og 36 Inspo-retter (norske hverdagsmiddager og Oda-retter). Inspo har litt
-  kjøligere bakgrunn. En Inspo-rett kan legges rett i uka eller lagres som egen.
+  og Inspo. Mine middager er bare eierens egne retter: foreløpig «Pinsa m/ ost
+  og skinke» og «Pinsa m/ pesto og kylling» (id 46 og 47, `MY_MEAL_IDS` i
+  `src/data/meals.ts`) pluss egne middager fra «Ny middag». De andre faste
+  rettene (Taco, Lasagne osv.) ligger nå i Inspo sammen med Inspo-biblioteket.
+  Inspo har litt kjøligere bakgrunn. En Inspo-rett kan legges rett i uka eller
+  lagres som egen.
+- **Varer per butikk:** en vare kan ha egen vare i én butikk
+  (`storeProducts`), f.eks. Petti-saus på Rema og Mutti på Kiwi/Coop. Velges i
+  «Ny middag» med «Annen vare i en butikk».
+- **Bilder:** en rett kan ha eget bilde (`image`, filer i `public/bilder/`)
+  med fotokreditt (`imageCredit`) nederst på bildet. Pinsabildene er fra
+  Wikimedia Commons (CC BY-SA), så kreditten må stå. Ellers velges bilde ut
+  fra navnet (`src/lib/photos.ts`).
 - **Oppskrift:** ingredienser, fremgangsmåte, pris i hver butikk («Billigst»),
   pris per porsjon, tips om antall porsjoner, og «Næring per porsjon» (protein,
   glykemisk belastning, grønt, ultraprosessert, diabetes). Næringen er grove

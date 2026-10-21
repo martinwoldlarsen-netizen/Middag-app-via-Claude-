@@ -48,10 +48,14 @@ export type Meal = {
   // Satt på egne middager. basedOn peker på en fast rett den erstatter.
   custom?: boolean;
   basedOn?: number;
+  // Eget bilde (sti i public/ eller full adresse) og hvem som tok det.
+  image?: string;
+  imageCredit?: string;
 };
 
 
-export const MEALS: Meal[] = [
+// Alle rettene som følger med appen.
+const ALL_MEALS: Meal[] = [
   {
     "id": 2,
     "name": "Taco",
@@ -273,6 +277,8 @@ export const MEALS: Meal[] = [
     "id": 46,
     "name": "Pinsa m/ ost og skinke",
     "emoji": "🍕",
+    "image": "/bilder/pinsa-ost-skinke.jpg",
+    "imageCredit": "Foto: Takeaway, Wikimedia Commons, CC BY-SA 3.0",
     "description": "Pinsa med pizzasaus, kokt skinke og Jarlsberg. Mutti-saus på Kiwi og Coop, Petti på Rema.",
     "timeMinutes": 15,
     "priceLevel": 1,
@@ -358,6 +364,8 @@ export const MEALS: Meal[] = [
     "id": 47,
     "name": "Pinsa m/ pesto og kylling",
     "emoji": "🍕",
+    "image": "/bilder/pinsa-pesto-kylling.jpg",
+    "imageCredit": "Foto: Triplec85, Wikimedia Commons, CC BY-SA 4.0",
     "description": "Pinsa med pesto, Jarlsberg, grillet kylling, cherrytomater og spekeskinke, toppet med ruccola og pinjekjerner. Hel kald grillkylling fra Kiwi, salatkylling på Rema og Coop.",
     "timeMinutes": 20,
     "priceLevel": 2,
@@ -1116,3 +1124,8 @@ export const MEALS: Meal[] = [
     ]
   }
 ];
+
+// «Mine middager»: bare eierens egne retter. De andre ligger i Inspo.
+const MY_MEAL_IDS = [46, 47];
+export const MEALS: Meal[] = ALL_MEALS.filter(meal => MY_MEAL_IDS.includes(meal.id as number));
+export const STARTER_MEALS: Meal[] = ALL_MEALS.filter(meal => !MY_MEAL_IDS.includes(meal.id as number));

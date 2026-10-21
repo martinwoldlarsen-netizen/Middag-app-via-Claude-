@@ -108,6 +108,11 @@ export default function MealDetailScreen() {
         twoColumns && styles.imageWide,
       ]}>
       <Image source={{ uri: photoFor(meal) }} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} accessibilityLabel={meal.name} />
+      {meal.imageCredit && (
+        <Text style={styles.credit} numberOfLines={1}>
+          {meal.imageCredit}
+        </Text>
+      )}
     </View>
   );
 
@@ -329,6 +334,18 @@ function productLines(ingredient: Ingredient, stores: Store[]): string[] {
 }
 
 const styles = StyleSheet.create({
+  credit: {
+    position: 'absolute',
+    right: 6,
+    bottom: 6,
+    maxWidth: '90%',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    color: '#fff',
+    fontSize: 10,
+  },
   row: {
     flexDirection: 'row',
     gap: spacing.xxl,
