@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useState } from 'react';
 
 import { API_ORIGIN } from '@/constants/config';
-import type { Ingredient, Meal } from '@/data/meals';
+import { forChain, type Ingredient, type Meal } from '@/data/meals';
 import type { Store } from '@/data/stores';
 import { BASE_PERSONS, ingredientPrice, mealBase } from '@/lib/meals';
 
@@ -125,6 +125,7 @@ export function ingredientCost(
   chain: string | null,
   book: PriceBook,
 ): ItemPrice {
+  ingredient = forChain(ingredient, chain);
   const packs = packsNeeded(ingredient, persons, base);
   if (isPantry(ingredient)) return { amount: 0, packs, source: 'pantry', unitPrice: null };
 
@@ -178,7 +179,11 @@ export function formatKroner(value: number): string {
 
 export function mealEans(meals: Meal[]): string[] {
   const eans = new Set<string>();
-  for (const meal of meals) for (const ing of meal.ingredients) if (ing.product?.ean) eans.add(ing.product.ean);
+  for (const meal of meals)
+    for (const ing of meal.ingredients) {
+      if (ing.product?.ean) eans.add(ing.product.ean);
+      for (const product of Object.values(ing.storeProducts ?? {})) if (product?.ean) eans.add(product.ean);
+    }
   return [...eans].sort();
 }
 

@@ -14,6 +14,7 @@ import { useMeals } from '@/lib/meals-store';
 import { photoFor } from '@/lib/photos';
 import { formatPrice, mealEans, mealPrice, usePrices, type PriceBook } from '@/lib/prices';
 import {
+  buildLines,
   DAYS,
   DAYS_SHORT,
   lineEans,
@@ -31,7 +32,7 @@ export default function WeekScreen() {
   const router = useRouter();
   const { stores, persons, ready: appReady } = useApp();
   const { findMeal, meals: myMeals } = useMeals();
-  const { ready, entries, addMeal, removeEntry, updateEntry, setStore, clearBought } = useShopping();
+  const { ready, entries, addMeal, removeEntry, updateEntry, setStore, clearBought, state } = useShopping();
   const { lines, store, remaining } = useShoppingList();
 
   const planned = entries.map(entry => ({ entry, meal: findMeal(entry.mealId) })).filter(item => item.meal) as {
@@ -45,8 +46,9 @@ export default function WeekScreen() {
   const active = planned.filter(item => !item.entry.boughtAt);
   const bought = planned.filter(item => item.entry.boughtAt);
   const portions = active.reduce((sum, item) => sum + item.entry.persons, 0);
+  // Hver butikk regnes med sine egne varer (f.eks. Petti på Rema, Mutti på Kiwi).
   const storePrices = stores
-    .map(s => ({ store: s, price: listPrice(lines, storeChain(s), book) }))
+    .map(s => ({ store: s, price: listPrice(buildLines(state, findMeal, storeChain(s)), storeChain(s), book) }))
     .sort((a, b) => a.price.total - b.price.total);
   const current = storePrices.find(item => item.store.id === store?.id) ?? storePrices[0];
   const cheapest = storePrices[0];

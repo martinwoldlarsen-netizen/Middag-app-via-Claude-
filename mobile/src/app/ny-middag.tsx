@@ -11,7 +11,7 @@ import { BASE_PERSONS } from '@/lib/meals';
 import { useMeals } from '@/lib/meals-store';
 import { Counter } from '@/components/AddItemSheet';
 import { cheapestText, hitMeta, hitToProduct, useProductSearch, type SearchHit } from '@/lib/search';
-import { formatPrice, isPantry, pricesByStore, usePrices, type ChainPrices } from '@/lib/prices';
+import { chainFor, formatPrice, isPantry, mealEans, pricesByStore, usePrices, type ChainPrices } from '@/lib/prices';
 import { useShopping } from '@/lib/shopping';
 import { useApp } from '@/lib/store';
 
@@ -43,6 +43,19 @@ export default function NewMealScreen() {
   const [query, setQuery] = useState('');
   const { hits, state: searchState } = useProductSearch(query);
   const [linking, setLinking] = useState<string | null>(null);
+  // Kobler vi en egen vare for én butikk (f.eks. Petti på Rema), står kjeden her.
+  const [linkChain, setLinkChain] = useState<string | null>(null);
+  const storeOptions = useMemo(() => {
+    const seen = new Set<string>();
+    return stores
+      .map(store => ({ chain: chainFor(store), name: store.name }))
+      .filter((option): option is { chain: string; name: string } => {
+        if (!option.chain || seen.has(option.chain)) return false;
+        seen.add(option.chain);
+        return true;
+      });
+  }, [stores]);
+  const storeName = (chain: string) => storeOptions.find(option => option.chain === chain)?.name ?? chain;
   const searchRef = useRef<TextInput>(null);
 
   const [saving, setSaving] = useState(false);
@@ -64,7 +77,7 @@ export default function NewMealScreen() {
 
   const addedFor = (ean: string) => items.find(item => item.product?.ean === ean);
 
-  const eans = useMemo(() => items.map(item => item.product?.ean).filter((ean): ean is string => Boolean(ean)), [items]);
+  const eans = useMemo(() => mealEans([{ ingredients: items } as unknown as Meal]), [items]);
   const { book } = usePrices(eans);
 
   const draftMeal: Meal = {
@@ -88,6 +101,14 @@ export default function NewMealScreen() {
 
   // Som i Rema-appen: søket står åpent, og trykker du på samme vare igjen, øker antallet.
   function pick(hit: SearchHit) {
+    if (linking && linkChain) {
+      const item = items.find(other => other.key === linking);
+      updateItem(linking, { storeProducts: { ...item?.storeProducts, [linkChain]: hitToProduct(hit) } });
+      setLinking(null);
+      setLinkChain(null);
+      setQuery('');
+      return;
+    }
     if (linking) {
       updateItem(linking, { product: hitToProduct(hit) });
       setLinking(null);
@@ -123,8 +144,9 @@ export default function NewMealScreen() {
     setQuery('');
   }
 
-  function startLinking(item: DraftItem) {
+  function startLinking(item: DraftItem, chain: string | null = null) {
     setLinking(item.key);
+    setLinkChain(chain);
     setQuery(item.name);
     searchRef.current?.focus();
   }
@@ -239,6 +261,13 @@ export default function NewMealScreen() {
                 onChange={change => updateItem(item.key, change)}
                 onRemove={() => setItems(current => current.filter(other => other.key !== item.key))}
                 onLink={() => startLinking(item)}
+                storeOptions={storeOptions}
+                onLinkStore={chain => startLinking(item, chain)}
+                onRemoveStore={chain => {
+                  const next = { ...item.storeProducts };
+                  delete next[chain];
+                  updateItem(item.key, { storeProducts: next });
+                }}
               />
             ))}
           </View>
@@ -248,9 +277,15 @@ export default function NewMealScreen() {
           {linkingItem && (
             <View style={styles.linkBanner}>
               <Text style={styles.linkBannerText} numberOfLines={2}>
-                Velg vare for «{linkingItem.name}»
+                {linkChain ? `Velg vare for «${linkingItem.name}» i ${storeName(linkChain)}` : `Velg vare for «${linkingItem.name}»`}
               </Text>
-              <Pressable accessibilityRole="button" onPress={() => setLinking(null)} hitSlop={8}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setLinking(null);
+                  setLinkChain(null);
+                }}
+                hitSlop={8}>
                 <Text style={styles.linkCancel}>Avbryt</Text>
               </Pressable>
             </View>
@@ -330,7 +365,7 @@ export default function NewMealScreen() {
             </Pressable>
           ))}
 
-          {query.trim().length >= 2 && searchState !== 'loading' && (
+          {query.trim().length >= 2 && searchState !== 'loading' && !linkChain && (
             <Pressable accessibilityRole="button" onPress={addFreeText} style={styles.freeText}>
               <Ionicons name="text-outline" size={16} color={colors.green} />
               <Text style={styles.freeTextLabel}>
@@ -397,6 +432,9 @@ function ItemRow({
   onChange,
   onRemove,
   onLink,
+  storeOptions,
+  onLinkStore,
+  onRemoveStore,
 }: {
   item: DraftItem;
   prices: ChainPrices | undefined;
@@ -404,7 +442,14 @@ function ItemRow({
   onChange: (change: Partial<Ingredient>) => void;
   onRemove: () => void;
   onLink: () => void;
+  storeOptions: { chain: string; name: string }[];
+  onLinkStore: (chain: string) => void;
+  onRemoveStore: (chain: string) => void;
 }) {
+  const [showStores, setShowStores] = useState(false);
+  const overrides = Object.entries(item.storeProducts ?? {}).filter(([, product]) => product);
+  const nameFor = (chain: string) => storeOptions.find(option => option.chain === chain)?.name ?? chain;
+  const free = storeOptions.filter(option => !item.storeProducts?.[option.chain]);
   const pantry = isPantry(item);
   const counted = item.unit === 'pk' || item.unit === 'stk';
   const [amountText, setAmountText] = useState(String(item.quantity).replace('.', ','));
@@ -448,6 +493,44 @@ function ItemRow({
             <Text style={styles.pantryText}>Har hjemme</Text>
           </Pressable>
         </View>
+        {overrides.map(([chain, product]) => (
+          <View key={chain} style={styles.storeRow}>
+            <Text style={styles.storeRowText} numberOfLines={1}>
+              {nameFor(chain)}: {product?.name}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Fjern egen vare i ${nameFor(chain)} for ${item.name}`}
+              onPress={() => onRemoveStore(chain)}
+              hitSlop={8}>
+              <Ionicons name="close" size={16} color={colors.muted} />
+            </Pressable>
+          </View>
+        ))}
+        {item.product && free.length > 0 && (
+          <>
+            <Pressable accessibilityRole="button" aria-expanded={showStores} onPress={() => setShowStores(open => !open)} hitSlop={6}>
+              <Text style={styles.itemLinkSoft}>Annen vare i en butikk</Text>
+            </Pressable>
+            {showStores && (
+              <View style={styles.storeChips}>
+                {free.map(option => (
+                  <Pressable
+                    key={option.chain}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Annen vare i ${option.name} for ${item.name}`}
+                    onPress={() => {
+                      setShowStores(false);
+                      onLinkStore(option.chain);
+                    }}
+                    style={styles.storeChip}>
+                    <Text style={styles.storeChipText}>{option.name}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </>
+        )}
       </View>
       <View style={styles.itemAmount}>
         {counted ? (
@@ -592,6 +675,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.lg,
     marginTop: 4,
+  },
+  itemLinkSoft: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: colors.inkSoft,
+    textDecorationLine: 'underline',
+    marginTop: 4,
+  },
+  storeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: 4,
+  },
+  storeRowText: {
+    flex: 1,
+    fontFamily: fonts.mono,
+    fontSize: 12,
+    color: colors.ink,
+  },
+  storeChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    marginTop: 4,
+  },
+  storeChip: {
+    borderRadius: radius.round,
+    borderWidth: 1,
+    borderColor: colors.line,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+  },
+  storeChipText: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    color: colors.ink,
   },
   itemLink: {
     fontFamily: fonts.bodyMedium,

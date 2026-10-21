@@ -8,6 +8,8 @@ import { NutritionCard } from '@/components/NutritionCard';
 import { BackLink, Body, Button, Eyebrow, Meta, Page, PersonStepper, Title } from '@/components/ui';
 import { categoryTints, colors, defaultTint, fonts, radius, spacing } from '@/constants/theme';
 import { INSPO } from '@/data/inspo';
+import type { Ingredient } from '@/data/meals';
+import type { Store } from '@/data/stores';
 import { useLayout } from '@/lib/layout';
 import { displayAmount, mealBase } from '@/lib/meals';
 import { useMeals } from '@/lib/meals-store';
@@ -242,9 +244,11 @@ export default function MealDetailScreen() {
             <Text style={styles.ingredientAmount}>{displayAmount(ingredient, persons, base)}</Text>
             <View style={styles.ingredientText}>
               <Text style={styles.ingredientName}>{ingredient.name}</Text>
-              {ingredient.product && ingredient.product.name !== ingredient.name && (
-                <Text style={styles.ingredientProduct}>{ingredient.product.name}</Text>
-              )}
+              {productLines(ingredient, stores).map(line => (
+                <Text key={line} style={styles.ingredientProduct}>
+                  {line}
+                </Text>
+              ))}
               {isPantry(ingredient) && <Text style={styles.ingredientProduct}>Har du hjemme?</Text>}
             </View>
           </View>
@@ -302,6 +306,26 @@ export default function MealDetailScreen() {
       )}
     </Page>
   );
+}
+
+// Hvilken vare som kjøpes hvor. Har ingrediensen egen vare i noen butikker,
+// vises butikknavnet foran, f.eks. «Rema 1000: Pizzasaus 200g Petti».
+function productLines(ingredient: Ingredient, stores: Store[]): string[] {
+  const product = ingredient.product;
+  const overrides = ingredient.storeProducts ?? {};
+  if (!Object.keys(overrides).length) {
+    return product && product.name !== ingredient.name ? [product.name] : [];
+  }
+  const lines: string[] = [];
+  const usesDefault = stores.filter(store => !overrides[chainFor(store) ?? '']).map(store => store.name);
+  if (product && usesDefault.length) lines.push(`${usesDefault.join(', ')}: ${product.name}`);
+  const byProduct = new Map<string, string[]>();
+  for (const store of stores) {
+    const other = overrides[chainFor(store) ?? ''];
+    if (other) byProduct.set(other.name, [...(byProduct.get(other.name) ?? []), store.name]);
+  }
+  for (const [name, storeNames] of byProduct) lines.push(`${storeNames.join(', ')}: ${name}`);
+  return lines;
 }
 
 const styles = StyleSheet.create({

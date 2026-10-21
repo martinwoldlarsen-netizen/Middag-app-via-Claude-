@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 
-import type { Ingredient, Meal, Product } from '@/data/meals';
+import { forChain, type Ingredient, type Meal, type Product } from '@/data/meals';
 import type { Store } from '@/data/stores';
 import { formatQuantity, mealBase, scaleQuantity } from '@/lib/meals';
 import { useMeals } from '@/lib/meals-store';
@@ -198,7 +198,12 @@ function addToDrafts(
 }
 
 // Slår sammen alle varene fra middagene som ikke er handlet ennå, pluss egne varer.
-export function buildLines(state: ShoppingState, findMeal: (id: string | number) => Meal | undefined): ListLine[] {
+// Varene velges for kjeden du handler i (en vare kan være Mutti på Kiwi og Petti på Rema).
+export function buildLines(
+  state: ShoppingState,
+  findMeal: (id: string | number) => Meal | undefined,
+  chain: string | null = null,
+): ListLine[] {
   const drafts = new Map<string, Draft>();
 
   for (const entry of sortEntries(Object.values(state.entries))) {
@@ -207,7 +212,7 @@ export function buildLines(state: ShoppingState, findMeal: (id: string | number)
     if (!meal) continue;
     const base = mealBase(meal);
     for (const ingredient of meal.ingredients) {
-      addToDrafts(drafts, ingredient, scaleQuantity(ingredient.quantity, entry.persons, base), meal.name, { fromMeal: true });
+      addToDrafts(drafts, forChain(ingredient, chain), scaleQuantity(ingredient.quantity, entry.persons, base), meal.name, { fromMeal: true });
     }
   }
 
@@ -700,7 +705,8 @@ export function useShoppingList() {
   const { findMeal } = useMeals();
   const { stores } = useApp();
   const store = stores.find(s => s.id === state.meta.storeId) ?? stores[0];
-  const lines = useMemo(() => buildLines(state, findMeal), [state, findMeal]);
+  const chain = store ? storeChain(store) : null;
+  const lines = useMemo(() => buildLines(state, findMeal, chain), [state, findMeal, chain]);
   const stops = useMemo(() => groupByStops(lines, store?.stops ?? []), [lines, store]);
   const remaining = lines.filter(line => !state.checked[line.key] && !state.skipped[line.key]).length;
   return { lines, stops, store, remaining };

@@ -17,10 +17,19 @@ export type Ingredient = {
   unit: string;
   section: string;
   product?: Product;
+  // Egen vare i noen kjeder, f.eks. Mutti-saus på Kiwi men Petti på Rema.
+  // Nøkkelen er kjedekoden (KIWI, REMA_1000, COOP_EXTRA).
+  storeProducts?: Partial<Record<string, Product>>;
   // Basisvarer man som regel har hjemme (salt, olje, en skje mel). De står på
   // lista, men telles ikke med i prisen.
   pantry?: boolean;
 };
+
+// Ingrediensen slik den kjøpes i en bestemt kjede.
+export function forChain(ingredient: Ingredient, chain: string | null | undefined): Ingredient {
+  const override = chain ? ingredient.storeProducts?.[chain] : undefined;
+  return override ? { ...ingredient, product: override } : ingredient;
+}
 
 export type Meal = {
   // Tall for de faste rettene, tekst (uuid) for egne middager fra databasen.
@@ -258,6 +267,222 @@ export const MEALS: Meal[] = [
       "Del cherrytomatene i to og legg dem på.",
       "Stek i 6–8 minutter til bunnen er sprø og osten bobler.",
       "Topp med spekeskinke og ruccola rett før servering."
+    ]
+  },
+  {
+    "id": 46,
+    "name": "Pinsa m/ ost og skinke",
+    "emoji": "🍕",
+    "description": "Pinsa med pizzasaus, kokt skinke og Jarlsberg. Mutti-saus på Kiwi og Coop, Petti på Rema.",
+    "timeMinutes": 15,
+    "priceLevel": 1,
+    "category": "Pizza",
+    "tags": [
+      "Gris",
+      "Enkelt",
+      "Rask",
+      "Kos"
+    ],
+    "basePersons": 2,
+    "ingredients": [
+      {
+        "name": "Pinsabunner",
+        "quantity": 1,
+        "unit": "pk",
+        "section": "Bakeri",
+        "product": {
+          "ean": "7035620056383",
+          "name": "Pinsa 2x230g Eldorado",
+          "image": "https://bilder.ngdata.no/7035620056383/kmh/large.jpg",
+          "packSize": 2,
+          "packUnit": "stk"
+        }
+      },
+      {
+        "name": "Pizzasaus",
+        "quantity": 1,
+        "unit": "boks",
+        "section": "Krydder & sauser",
+        "product": {
+          "ean": "8005110002052",
+          "name": "Pizzasaus Klassisk 400g Mutti",
+          "image": "https://bilder.ngdata.no/8005110002052/meny/large.jpg",
+          "packSize": 400,
+          "packUnit": "g"
+        },
+        "storeProducts": {
+          "REMA_1000": {
+            "ean": "8003496800361",
+            "name": "Pizzasaus 200g Petti",
+            "image": "https://bilder.ngdata.no/8003496800361/kmh/large.jpg",
+            "packSize": 200,
+            "packUnit": "g"
+          }
+        }
+      },
+      {
+        "name": "Kokt skinke",
+        "quantity": 1,
+        "unit": "pk",
+        "section": "Kjøtt & fisk",
+        "product": {
+          "ean": "7037203627713",
+          "name": "Gilde Ekte Kokt Skinke Skivet 160g",
+          "image": "https://cdcimg.coop.no/rte/RTE2/7037203627713.png",
+          "packSize": 160,
+          "packUnit": "g"
+        }
+      },
+      {
+        "name": "Jarlsberg",
+        "quantity": 150,
+        "unit": "g",
+        "section": "Meieri",
+        "product": {
+          "ean": "7038010053382",
+          "name": "Jarlsberg Skorpefri 450g Tine",
+          "image": "https://bilder.ngdata.no/7038010053382/kmh/large.jpg",
+          "packSize": 450,
+          "packUnit": "g"
+        }
+      }
+    ],
+    "steps": [
+      "Sett ovnen på 250 °C.",
+      "Smør pizzasaus på pinsabunnene.",
+      "Legg på kokt skinke og riv over Jarlsberg.",
+      "Stek i 6–8 minutter til osten er gyllen."
+    ]
+  },
+  {
+    "id": 47,
+    "name": "Pinsa m/ pesto og kylling",
+    "emoji": "🍕",
+    "description": "Pinsa med pesto, Jarlsberg, grillet kylling, cherrytomater og spekeskinke, toppet med ruccola og pinjekjerner. Hel kald grillkylling fra Kiwi, salatkylling på Rema og Coop.",
+    "timeMinutes": 20,
+    "priceLevel": 2,
+    "category": "Pizza",
+    "tags": [
+      "Kylling",
+      "Enkelt",
+      "Kos"
+    ],
+    "basePersons": 2,
+    "ingredients": [
+      {
+        "name": "Pinsabunner",
+        "quantity": 1,
+        "unit": "pk",
+        "section": "Bakeri",
+        "product": {
+          "ean": "7035620056383",
+          "name": "Pinsa 2x230g Eldorado",
+          "image": "https://bilder.ngdata.no/7035620056383/kmh/large.jpg",
+          "packSize": 2,
+          "packUnit": "stk"
+        }
+      },
+      {
+        "name": "Grønn pesto",
+        "quantity": 1,
+        "unit": "glass",
+        "section": "Krydder & sauser",
+        "product": {
+          "ean": "8076809513753",
+          "name": "Barilla Pesto alla Genovese 190g",
+          "image": "https://cdcimg.coop.no/rte/RTE2/8076809513753.png",
+          "packSize": 190,
+          "packUnit": "g"
+        }
+      },
+      {
+        "name": "Jarlsberg",
+        "quantity": 150,
+        "unit": "g",
+        "section": "Meieri",
+        "product": {
+          "ean": "7038010053382",
+          "name": "Jarlsberg Skorpefri 450g Tine",
+          "image": "https://bilder.ngdata.no/7038010053382/kmh/large.jpg",
+          "packSize": 450,
+          "packUnit": "g"
+        }
+      },
+      {
+        "name": "Cherrytomater",
+        "quantity": 250,
+        "unit": "g",
+        "section": "Frukt & grønt",
+        "product": {
+          "ean": "7040515003229",
+          "name": "Røde cherrytomater Norge, 250 g",
+          "image": null,
+          "packSize": 250,
+          "packUnit": "g"
+        }
+      },
+      {
+        "name": "Ferdiggrillet kylling",
+        "quantity": 1,
+        "unit": "stk",
+        "section": "Kjøtt & fisk",
+        "storeProducts": {
+          "KIWI": {
+            "ean": "2000600200006",
+            "name": "Kylling Grillet 1/1 Kald pr stykk",
+            "image": "https://bilder.ngdata.no/6002/meny/large.jpg",
+            "packSize": 1,
+            "packUnit": "stk"
+          }
+        }
+      },
+      {
+        "name": "Ruccola",
+        "quantity": 1,
+        "unit": "pose",
+        "section": "Frukt & grønt",
+        "product": {
+          "ean": "7031540011495",
+          "name": "Ruccola 70g",
+          "image": null,
+          "packSize": 70,
+          "packUnit": "g"
+        }
+      },
+      {
+        "name": "Spekeskinke",
+        "quantity": 80,
+        "unit": "g",
+        "section": "Kjøtt & fisk",
+        "product": {
+          "ean": "7037206101654",
+          "name": "Spekeskinke Familiens 80g Gilde",
+          "image": "https://bilder.ngdata.no/7037206101654/kmh/large.jpg",
+          "packSize": 80,
+          "packUnit": "g"
+        }
+      },
+      {
+        "name": "Pinjekjerner",
+        "quantity": 30,
+        "unit": "g",
+        "section": "Tørrmat",
+        "product": {
+          "ean": "7040512880182",
+          "name": "Pinjekjerner Naturell 35g Grønn&Frisk",
+          "image": "https://bilder.ngdata.no/7040512880182/kmh/large.jpg",
+          "packSize": 35,
+          "packUnit": "g"
+        }
+      }
+    ],
+    "steps": [
+      "Sett ovnen på 250 °C.",
+      "Rist pinjekjernene i en tørr panne til de er gylne. Pass på, de tar fort farge.",
+      "Smør pesto på pinsabunnene og riv over Jarlsberg.",
+      "Fordel kylling i biter og halverte cherrytomater på toppen.",
+      "Stek i 6–8 minutter til osten er gyllen.",
+      "Legg på spekeskinke og ruccola, og dryss over pinjekjernene."
     ]
   },
   {

@@ -342,7 +342,13 @@ function LineRow({
   onSwap: () => void;
   onRemove?: () => void;
 }) {
-  const size = line.product ? sizeText(line.product.packSize, line.product.packUnit) : null;
+  // Er en bestemt vare valgt, vises varenavnet (f.eks. «Pizzasaus 200g Petti»),
+  // så du finner riktig merke i hylla. Ellers bare pakkestørrelsen.
+  const size = line.product
+    ? line.product.name && line.product.name !== line.name
+      ? line.product.name
+      : sizeText(line.product.packSize, line.product.packUnit)
+    : null;
   const image = line.product?.image ?? productImage(line.product?.ean);
   const hint = line.swapped
     ? `I stedet for ${line.originalName}`
