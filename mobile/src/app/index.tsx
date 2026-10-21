@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { QuickShopBar } from '@/components/QuickShop';
 import { InstallCard } from '@/components/InstallCard';
 import { Slider } from '@/components/Slider';
 import { Body, Button, Chip, Eyebrow, Meta, Page, PersonStepper, Title } from '@/components/ui';
@@ -47,7 +48,7 @@ const PRICE_MAX = 150;
 export default function MealListScreen() {
   const router = useRouter();
   const { persons, setPersons, stores } = useApp();
-  const { entryFor, addMeal, removeEntry, state } = useShopping();
+  const { entryFor, addMeal, removeEntry, state, activeEntries } = useShopping();
   const { meals: myMeals } = useMeals();
   const [library, setLibrary] = useState<Library>('mine');
   const inspo = library === 'inspo';
@@ -137,189 +138,193 @@ export default function MealListScreen() {
   const gridGap = view === 'liste' ? { columnGap: gap, rowGap: 0 } : { gap };
 
   return (
-    <Page background={inspo ? colors.bgCool : colors.bg}>
-      <InstallCard dismissible style={styles.install} />
-      <View style={styles.topRow}>
-        <View style={styles.library}>
-          {(
-            [
-              { key: 'mine', label: 'Mine middager' },
-              { key: 'inspo', label: 'Inspo' },
-            ] as const
-          ).map(option => (
-            <Pressable
-              key={option.key}
-              accessibilityRole="button"
-              aria-selected={library === option.key}
-              onPress={() => setLibrary(option.key)}
-              style={[styles.libraryOption, library === option.key && styles.libraryOptionOn]}>
-              <Text style={[styles.libraryText, library === option.key && styles.libraryTextOn]}>{option.label}</Text>
-            </Pressable>
+    <View style={styles.screen}>
+      <Page background={inspo ? colors.bgCool : colors.bg}>
+        <InstallCard dismissible style={styles.install} />
+        <View style={styles.topRow}>
+          <View style={styles.library}>
+            {(
+              [
+                { key: 'mine', label: 'Mine middager' },
+                { key: 'inspo', label: 'Inspo' },
+              ] as const
+            ).map(option => (
+              <Pressable
+                key={option.key}
+                accessibilityRole="button"
+                aria-selected={library === option.key}
+                onPress={() => setLibrary(option.key)}
+                style={[styles.libraryOption, library === option.key && styles.libraryOptionOn]}>
+                <Text style={[styles.libraryText, library === option.key && styles.libraryTextOn]}>{option.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={styles.views}>
+            {VIEWS.map(option => (
+              <Pressable
+                key={option.key}
+                accessibilityRole="button"
+                accessibilityLabel={option.label}
+                aria-selected={view === option.key}
+                onPress={() => setView(option.key)}
+                hitSlop={4}
+                style={[styles.viewOption, view === option.key && styles.viewOptionOn]}>
+                <Ionicons name={option.icon} size={18} color={view === option.key ? colors.bg : colors.ink} />
+              </Pressable>
+            ))}
+          </View>
+        </View>
+        <View style={[styles.hero, wide ? styles.heroWide : styles.heroNarrow]}>
+          <View style={styles.heroText}>
+            {/* På telefon holder vi toppen kort, så middagene synes med en gang. */}
+            {wide && <Eyebrow>{inspo ? `Inspo · ${INSPO.length} nye retter` : 'Deres faste middager'}</Eyebrow>}
+            <Title size={wide ? 'xl' : 'lg'}>{inspo ? 'Noe nytt å prøve?' : 'Hva blir det til middag?'}</Title>
+            {wide && (
+              <Body style={styles.heroBody}>
+                {inspo
+                  ? 'Norske hverdagsmiddager og Oda-retter. Trykk + for å prøve én i uka, eller åpne den og legg den til i dine middager.'
+                  : 'Trykk + for å legge middager i uka, eller velg én og handle med en gang. Lista følger alltid butikkens rute.'}
+              </Body>
+            )}
+          </View>
+          <View style={[styles.controls, wide && styles.controlsWide]}>
+            <View style={styles.search}>
+              <Ionicons name="search" size={18} color={colors.inkSoft} />
+              <TextInput
+                value={query}
+                onChangeText={setQuery}
+                placeholder={inspo ? 'Søk i Inspo' : 'Søk i middagene'}
+                placeholderTextColor={colors.muted}
+                style={styles.searchInput}
+                autoCorrect={false}
+                accessibilityLabel="Søk i middagene"
+              />
+              {query.length > 0 && (
+                <Pressable accessibilityLabel="Tøm søket" onPress={() => setQuery('')} hitSlop={8}>
+                  <Ionicons name="close-circle" size={18} color={colors.muted} />
+                </Pressable>
+              )}
+            </View>
+            <View style={styles.controlRow}>
+              <PersonStepper value={persons} onChange={setPersons} />
+              <Button
+                label="Ny middag"
+                icon="add"
+                variant="lime"
+                onPress={() => router.push('/ny-middag')}
+                style={!wide && styles.newButtonNarrow}
+              />
+            </View>
+          </View>
+        </View>
+
+        {/* På telefon ligger sorteringen på én linje som kan sveipes sidelengs. */}
+        <ScrollView
+          horizontal={!wide}
+          scrollEnabled={!wide}
+          showsHorizontalScrollIndicator={false}
+          style={[styles.sortScroll, !wide && styles.sortScrollNarrow]}
+          contentContainerStyle={[styles.sortRow, !wide && styles.sortRowNarrow]}>
+          <Pressable
+            accessibilityRole="button"
+            aria-expanded={filterOpen}
+            onPress={() => setFilterOpen(open => !open)}
+            style={[styles.filterButton, (filterOpen || activeFilters > 0) && styles.filterButtonOn]}>
+            <Ionicons name="options-outline" size={16} color={colors.ink} />
+            <Text style={styles.filterButtonText}>Filter{activeFilters ? ` (${activeFilters})` : ''}</Text>
+          </Pressable>
+          {SORTS.map(option => (
+            <Chip key={option.key} label={option.label} selected={sort === option.key} onPress={() => setSort(option.key)} />
           ))}
-        </View>
-        <View style={styles.views}>
-          {VIEWS.map(option => (
-            <Pressable
-              key={option.key}
-              accessibilityRole="button"
-              accessibilityLabel={option.label}
-              aria-selected={view === option.key}
-              onPress={() => setView(option.key)}
-              hitSlop={4}
-              style={[styles.viewOption, view === option.key && styles.viewOptionOn]}>
-              <Ionicons name={option.icon} size={18} color={view === option.key ? colors.bg : colors.ink} />
-            </Pressable>
-          ))}
-        </View>
-      </View>
-      <View style={[styles.hero, wide ? styles.heroWide : styles.heroNarrow]}>
-        <View style={styles.heroText}>
-          {/* På telefon holder vi toppen kort, så middagene synes med en gang. */}
-          {wide && <Eyebrow>{inspo ? `Inspo · ${INSPO.length} nye retter` : 'Deres faste middager'}</Eyebrow>}
-          <Title size={wide ? 'xl' : 'lg'}>{inspo ? 'Noe nytt å prøve?' : 'Hva blir det til middag?'}</Title>
-          {wide && (
-            <Body style={styles.heroBody}>
-              {inspo
-                ? 'Norske hverdagsmiddager og Oda-retter. Trykk + for å prøve én i uka, eller åpne den og legg den til i dine middager.'
-                : 'Trykk + for å legge middager i uka, eller velg én og handle med en gang. Lista følger alltid butikkens rute.'}
-            </Body>
-          )}
-        </View>
-        <View style={[styles.controls, wide && styles.controlsWide]}>
-          <View style={styles.search}>
-            <Ionicons name="search" size={18} color={colors.inkSoft} />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder={inspo ? 'Søk i Inspo' : 'Søk i middagene'}
-              placeholderTextColor={colors.muted}
-              style={styles.searchInput}
-              autoCorrect={false}
-              accessibilityLabel="Søk i middagene"
-            />
-            {query.length > 0 && (
-              <Pressable accessibilityLabel="Tøm søket" onPress={() => setQuery('')} hitSlop={8}>
-                <Ionicons name="close-circle" size={18} color={colors.muted} />
+        </ScrollView>
+
+        {!inspo && saver && saverItem && (
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel={`Sparemiddag: ${saver.meal.name}`}
+            onPress={() => router.push(`/rett/${saver.meal.id}`)}
+            style={styles.saver}>
+            <Ionicons name="leaf-outline" size={22} color={colors.ink} />
+            <View style={styles.saverText}>
+              <Text style={styles.saverTitle}>Sparemiddag: {saver.meal.name}</Text>
+              <Text style={styles.saverBody}>
+                Bruker opp {saverItem.name.toLowerCase()}, som {expiryText(saverItem.expires)}.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.ink} />
+          </Pressable>
+        )}
+
+        {filterOpen && (
+          <View style={[styles.filterPanel, wide && styles.filterPanelWide]}>
+            <View style={styles.filterSlider}>
+              <Slider
+                label="Maks tid"
+                value={maxTime}
+                min={15}
+                max={TIME_MAX}
+                step={5}
+                format={value => (value >= TIME_MAX ? 'Alle' : `${value} min`)}
+                onChange={setMaxTime}
+              />
+            </View>
+            <View style={styles.filterSlider}>
+              <Slider
+                label="Maks pris per person"
+                value={maxPrice}
+                min={20}
+                max={PRICE_MAX}
+                step={5}
+                format={value => (value >= PRICE_MAX ? 'Alle' : `${value} kr`)}
+                onChange={setMaxPrice}
+              />
+            </View>
+            {activeFilters > 0 && (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setMaxTime(TIME_MAX);
+                  setMaxPrice(PRICE_MAX);
+                }}>
+                <Text style={styles.resetFilter}>Nullstill filter</Text>
               </Pressable>
             )}
           </View>
-          <View style={styles.controlRow}>
-            <PersonStepper value={persons} onChange={setPersons} />
-            <Button
-              label="Ny middag"
-              icon="add"
-              variant="lime"
-              onPress={() => router.push('/ny-middag')}
-              style={!wide && styles.newButtonNarrow}
-            />
-          </View>
-        </View>
-      </View>
+        )}
 
-      {/* På telefon ligger sorteringen på én linje som kan sveipes sidelengs. */}
-      <ScrollView
-        horizontal={!wide}
-        scrollEnabled={!wide}
-        showsHorizontalScrollIndicator={false}
-        style={[styles.sortScroll, !wide && styles.sortScrollNarrow]}
-        contentContainerStyle={[styles.sortRow, !wide && styles.sortRowNarrow]}>
-        <Pressable
-          accessibilityRole="button"
-          aria-expanded={filterOpen}
-          onPress={() => setFilterOpen(open => !open)}
-          style={[styles.filterButton, (filterOpen || activeFilters > 0) && styles.filterButtonOn]}>
-          <Ionicons name="options-outline" size={16} color={colors.ink} />
-          <Text style={styles.filterButtonText}>Filter{activeFilters ? ` (${activeFilters})` : ''}</Text>
-        </Pressable>
-        {SORTS.map(option => (
-          <Chip key={option.key} label={option.label} selected={sort === option.key} onPress={() => setSort(option.key)} />
-        ))}
-      </ScrollView>
-
-      {!inspo && saver && saverItem && (
-        <Pressable
-          accessibilityRole="link"
-          accessibilityLabel={`Sparemiddag: ${saver.meal.name}`}
-          onPress={() => router.push(`/rett/${saver.meal.id}`)}
-          style={styles.saver}>
-          <Ionicons name="leaf-outline" size={22} color={colors.ink} />
-          <View style={styles.saverText}>
-            <Text style={styles.saverTitle}>Sparemiddag: {saver.meal.name}</Text>
-            <Text style={styles.saverBody}>
-              Bruker opp {saverItem.name.toLowerCase()}, som {expiryText(saverItem.expires)}.
-            </Text>
+        {meals.length === 0 ? (
+          <View style={styles.empty}>
+            <Title size="sm">{query ? `Ingen treff på «${query}»` : 'Ingen middager passer filteret'}</Title>
+            <Body>{query ? 'Prøv et annet ord, eller tøm søket for å se alle middagene.' : 'Dra skalaene litt opp, eller nullstill filteret.'}</Body>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.ink} />
-        </Pressable>
-      )}
-
-      {filterOpen && (
-        <View style={[styles.filterPanel, wide && styles.filterPanelWide]}>
-          <View style={styles.filterSlider}>
-            <Slider
-              label="Maks tid"
-              value={maxTime}
-              min={15}
-              max={TIME_MAX}
-              step={5}
-              format={value => (value >= TIME_MAX ? 'Alle' : `${value} min`)}
-              onChange={setMaxTime}
-            />
+        ) : (
+          <View style={[styles.grid, gridGap]}>
+            {meals.map(({ meal, best, perPerson, protein, eatenAt }) => (
+              <MealCard
+                key={meal.id}
+                view={view}
+                meal={meal}
+                width={cardWidth}
+                best={best}
+                perPerson={perPerson}
+                protein={sort === 'protein' ? protein : null}
+                saved={inspo && saved.has(meal.id as number)}
+                eatenAt={eatenAt}
+                inWeek={Boolean(entryFor(meal.id))}
+                onToggleWeek={() => {
+                  const entry = entryFor(meal.id);
+                  if (entry) removeEntry(entry.id);
+                  else addMeal(meal.id, persons);
+                }}
+                onPress={() => router.push(`/rett/${meal.id}`)}
+              />
+            ))}
           </View>
-          <View style={styles.filterSlider}>
-            <Slider
-              label="Maks pris per person"
-              value={maxPrice}
-              min={20}
-              max={PRICE_MAX}
-              step={5}
-              format={value => (value >= PRICE_MAX ? 'Alle' : `${value} kr`)}
-              onChange={setMaxPrice}
-            />
-          </View>
-          {activeFilters > 0 && (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                setMaxTime(TIME_MAX);
-                setMaxPrice(PRICE_MAX);
-              }}>
-              <Text style={styles.resetFilter}>Nullstill filter</Text>
-            </Pressable>
-          )}
-        </View>
-      )}
-
-      {meals.length === 0 ? (
-        <View style={styles.empty}>
-          <Title size="sm">{query ? `Ingen treff på «${query}»` : 'Ingen middager passer filteret'}</Title>
-          <Body>{query ? 'Prøv et annet ord, eller tøm søket for å se alle middagene.' : 'Dra skalaene litt opp, eller nullstill filteret.'}</Body>
-        </View>
-      ) : (
-        <View style={[styles.grid, gridGap]}>
-          {meals.map(({ meal, best, perPerson, protein, eatenAt }) => (
-            <MealCard
-              key={meal.id}
-              view={view}
-              meal={meal}
-              width={cardWidth}
-              best={best}
-              perPerson={perPerson}
-              protein={sort === 'protein' ? protein : null}
-              saved={inspo && saved.has(meal.id as number)}
-              eatenAt={eatenAt}
-              inWeek={Boolean(entryFor(meal.id))}
-              onToggleWeek={() => {
-                const entry = entryFor(meal.id);
-                if (entry) removeEntry(entry.id);
-                else addMeal(meal.id, persons);
-              }}
-              onPress={() => router.push(`/rett/${meal.id}`)}
-            />
-          ))}
-        </View>
-      )}
-    </Page>
+        )}
+        {activeEntries.length > 0 && <View style={styles.barSpace} />}
+      </Page>
+      <QuickShopBar />
+    </View>
   );
 }
 
@@ -487,6 +492,8 @@ function WeekButton({ meal, inWeek, onToggleWeek, compact, inline }: CardProps &
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  barSpace: { height: 80 },
   install: {
     marginBottom: spacing.lg,
   },

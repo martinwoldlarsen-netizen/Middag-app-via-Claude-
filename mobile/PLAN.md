@@ -4,7 +4,7 @@ Les denne før du gjør endringer i appen. Den samler prosjektdokumentet
 (`docs/middag-app-konsept.pdf`), alt eieren har sagt underveis, og eierens egne
 notater. «Du» betyr eieren av appen.
 
-Sist oppdatert: 21. oktober 2026 (Mine middager = bare eierens egne retter).
+Sist oppdatert: 21. oktober 2026 (Handle nå fra forsiden, Mine middager = bare egne retter).
 
 ## Kjerneidé
 
@@ -38,6 +38,11 @@ butikken uten å snu en eneste gang. Du trykker deg gjennom lista og er ferdig.
   en gang. Søk, antall personer, sortering (Forslag, Raskest, Billigst, Mest
   protein, Lengst siden) og filter med dra-skalaer for tid og pris per person.
   + legger middagen i uka.
+- **Handle nå fra forsiden:** trykk + på middagene du vil ha. En mørk linje
+  nederst viser «2 middager valgt» og «Velg butikk». Arket viser middagene
+  (✕ tar ut), at like varer slås sammen, og hver butikk med antall varer og
+  pris (billigst merket). Trykk butikken, så åpnes handlelista der. Alt bygger
+  på uka, så valgte middager står også i Uka (`src/components/QuickShop.tsx`).
 - **Mine middager / Inspo:** bryteren øverst bytter mellom husstandens middager
   og Inspo. Mine middager er bare eierens egne retter: foreløpig «Pinsa m/ ost
   og skinke» og «Pinsa m/ pesto og kylling» (id 46 og 47, `MY_MEAL_IDS` i
